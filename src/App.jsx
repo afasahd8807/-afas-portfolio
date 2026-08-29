@@ -196,14 +196,9 @@ function BrandLogo() {
 const bgIcons = [
   { Icon: Cloud, top: "8%", left: "10%", size: 46, duration: 22, delay: 0, drift: 1, color: "text-blue-400/[0.10]" },
   { Icon: Code2, top: "15%", left: "80%", size: 40, duration: 26, delay: 2, drift: 2, color: "text-violet-400/[0.10]" },
-  { Icon: Server, top: "30%", left: "4%", size: 38, duration: 19, delay: 1, drift: 3, color: "text-indigo-400/[0.10]" },
   { Icon: Database, top: "52%", left: "88%", size: 44, duration: 24, delay: 3, drift: 1, color: "text-blue-400/[0.08]" },
   { Icon: Terminal, top: "66%", left: "12%", size: 36, duration: 20, delay: 0.5, drift: 2, color: "text-violet-400/[0.10]" },
   { Icon: ShieldCheck, top: "76%", left: "72%", size: 42, duration: 28, delay: 4, drift: 3, color: "text-emerald-400/[0.10]" },
-  { Icon: Network, top: "42%", left: "48%", size: 34, duration: 23, delay: 1.5, drift: 1, color: "text-indigo-400/[0.09]" },
-  { Icon: Wrench, top: "4%", left: "55%", size: 32, duration: 21, delay: 2.5, drift: 2, color: "text-blue-400/[0.09]" },
-  { Icon: Laptop, top: "86%", left: "32%", size: 40, duration: 25, delay: 0, drift: 3, color: "text-violet-400/[0.09]" },
-  { Icon: Headphones, top: "22%", left: "28%", size: 30, duration: 18, delay: 3.5, drift: 1, color: "text-emerald-400/[0.09]" },
 ];
 
 function Reveal({ children, delay = 0, className = "" }) {
@@ -241,10 +236,10 @@ function Reveal({ children, delay = 0, className = "" }) {
 
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [spotlight, setSpotlight] = useState({ x: 0, y: 0, active: false });
   const [showBackToTop, setShowBackToTop] = useState(false);
-  const backgroundRef = useRef(null);
   const progressRef = useRef(null);
+  const spotlightRef = useRef(null);
+  const pointerFrameRef = useRef(null);
 
   useEffect(() => {
     let frameId = null;
@@ -259,10 +254,6 @@ function App() {
         1,
       );
       const progress = Math.min(Math.max(scrollTop / docHeight, 0), 1);
-
-      if (backgroundRef.current) {
-        backgroundRef.current.style.transform = `translate3d(0, ${scrollTop * 0.06}px, 0)`;
-      }
 
       if (progressRef.current) {
         progressRef.current.style.transform = `scaleX(${progress})`;
@@ -294,21 +285,47 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      document.documentElement.classList.toggle(
+        "animations-paused",
+        document.hidden,
+      );
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.documentElement.classList.remove("animations-paused");
+    };
+  }, []);
+
   const handleHeroMouseMove = (e) => {
+    if (!spotlightRef.current || pointerFrameRef.current !== null) return;
+
     const rect = e.currentTarget.getBoundingClientRect();
-    setSpotlight({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-      active: true,
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    pointerFrameRef.current = window.requestAnimationFrame(() => {
+      if (spotlightRef.current) {
+        spotlightRef.current.style.setProperty("--spotlight-x", `${x}px`);
+        spotlightRef.current.style.setProperty("--spotlight-y", `${y}px`);
+        spotlightRef.current.style.opacity = "1";
+      }
+      pointerFrameRef.current = null;
     });
+  };
+
+  const handleHeroMouseLeave = () => {
+    if (spotlightRef.current) spotlightRef.current.style.opacity = "0";
   };
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#030308] text-white">
       {/* Background */}
       <div
-        ref={backgroundRef}
-        className="pointer-events-none fixed inset-0 transform-gpu overflow-hidden will-change-transform"
+        className="background-stage pointer-events-none fixed inset-0 overflow-hidden"
       >
         <div className="aurora" />
         <div className="blob blob-one" />
@@ -412,23 +429,20 @@ function App() {
         <section
           id="home"
           onMouseMove={handleHeroMouseMove}
-          onMouseLeave={() => setSpotlight((s) => ({ ...s, active: false }))}
+          onMouseLeave={handleHeroMouseLeave}
           className="relative flex min-h-screen items-center overflow-hidden pt-24"
         >
           {/* Cursor-tracking glow — desktop only, follows pointer within the hero */}
           <div
-            className="pointer-events-none absolute inset-0 z-0 hidden transition-opacity duration-300 sm:block"
-            style={{
-              opacity: spotlight.active ? 1 : 0,
-              background: `radial-gradient(480px circle at ${spotlight.x}px ${spotlight.y}px, rgba(99, 102, 241, 0.14), transparent 45%)`,
-            }}
+            ref={spotlightRef}
+            className="hero-spotlight pointer-events-none absolute inset-0 z-0 hidden sm:block"
           />
 
           <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-16 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1.08fr_.92fr]">
             <div>
               <div className="fade-up mb-7 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/[0.07] px-4 py-2 text-sm text-cyan-300">
                 <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75" />
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-35" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-400" />
                 </span>
                 Building my career in Cloud Engineering
