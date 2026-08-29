@@ -140,11 +140,21 @@ const certifications = [
   },
 ];
 
+// Small drifting "spark" dots layered over the hero visual — purely
+// decorative, positioned around the terminal card for extra sparkle.
+const heroSparks = [
+  { top: "6%", left: "12%", size: 5, duration: 4.2, delay: 0 },
+  { top: "18%", left: "88%", size: 4, duration: 5, delay: 0.6 },
+  { top: "82%", left: "20%", size: 4, duration: 4.6, delay: 1.2 },
+  { top: "70%", left: "92%", size: 6, duration: 5.4, delay: 0.3 },
+  { top: "40%", left: "4%", size: 3, duration: 3.8, delay: 1.6 },
+];
+
 function SectionTitle({ label, title, description }) {
   return (
     <div className="mb-12 max-w-3xl">
       <div className="mb-4 flex items-center gap-3">
-        <span className="h-px w-8 bg-violet-500" />
+        <span className="eyebrow-line" />
         <span className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-400">
           {label}
         </span>
@@ -232,24 +242,56 @@ function Reveal({ children, delay = 0, className = "" }) {
 function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [spotlight, setSpotlight] = useState({ x: 0, y: 0, active: false });
-  const [scrollProgress, setScrollProgress] = useState(0);
   const [showBackToTop, setShowBackToTop] = useState(false);
-  const [parallaxY, setParallaxY] = useState(0);
+  const backgroundRef = useRef(null);
+  const progressRef = useRef(null);
 
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollTop = window.scrollY;
-      const docHeight =
-        document.documentElement.scrollHeight - window.innerHeight;
+    let frameId = null;
+    let lastBackToTopVisibility = window.scrollY > 600;
 
-      setScrollProgress(docHeight > 0 ? (scrollTop / docHeight) * 100 : 0);
-      setShowBackToTop(scrollTop > 600);
-      setParallaxY(scrollTop * 0.06);
+    setShowBackToTop(lastBackToTopVisibility);
+
+    const updateScrollEffects = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = Math.max(
+        document.documentElement.scrollHeight - window.innerHeight,
+        1,
+      );
+      const progress = Math.min(Math.max(scrollTop / docHeight, 0), 1);
+
+      if (backgroundRef.current) {
+        backgroundRef.current.style.transform = `translate3d(0, ${scrollTop * 0.06}px, 0)`;
+      }
+
+      if (progressRef.current) {
+        progressRef.current.style.transform = `scaleX(${progress})`;
+      }
+
+      const shouldShowBackToTop = scrollTop > 600;
+      if (shouldShowBackToTop !== lastBackToTopVisibility) {
+        lastBackToTopVisibility = shouldShowBackToTop;
+        setShowBackToTop(shouldShowBackToTop);
+      }
+
+      frameId = null;
     };
 
-    handleScroll();
+    const handleScroll = () => {
+      if (frameId === null) {
+        frameId = window.requestAnimationFrame(updateScrollEffects);
+      }
+    };
+
+    updateScrollEffects();
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener("resize", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+      if (frameId !== null) window.cancelAnimationFrame(frameId);
+    };
   }, []);
 
   const handleHeroMouseMove = (e) => {
@@ -265,13 +307,14 @@ function App() {
     <div className="relative min-h-screen overflow-x-hidden bg-[#030308] text-white">
       {/* Background */}
       <div
-        className="pointer-events-none fixed inset-0 overflow-hidden"
-        style={{ transform: `translateY(${parallaxY}px)` }}
+        ref={backgroundRef}
+        className="pointer-events-none fixed inset-0 transform-gpu overflow-hidden will-change-transform"
       >
         <div className="aurora" />
         <div className="blob blob-one" />
         <div className="blob blob-two" />
         <div className="blob blob-three" />
+        <div className="blob blob-four" />
         <div className="particles" />
         <div className="bg-icons-layer">
           {bgIcons.map(({ Icon, top, left, size, duration, delay, drift, color }, i) => (
@@ -295,8 +338,8 @@ function App() {
 
       {/* Scroll progress bar */}
       <div
-        className="fixed left-0 top-0 z-[60] h-[3px] bg-gradient-to-r from-blue-400 via-violet-500 to-blue-400"
-        style={{ width: `${scrollProgress}%` }}
+        ref={progressRef}
+        className="fixed left-0 top-0 z-[60] h-[3px] w-full origin-left scale-x-0 transform-gpu bg-gradient-to-r from-blue-400 via-cyan-400 to-violet-400 will-change-transform"
       />
 
       {/* NAVBAR */}
@@ -383,10 +426,10 @@ function App() {
 
           <div className="relative z-10 mx-auto grid w-full max-w-7xl items-center gap-16 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1.08fr_.92fr]">
             <div>
-              <div className="fade-up mb-7 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/[0.07] px-4 py-2 text-sm text-emerald-300">
+              <div className="fade-up mb-7 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/[0.07] px-4 py-2 text-sm text-cyan-300">
                 <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-400" />
                 </span>
                 Building my career in Cloud Engineering
               </div>
@@ -403,7 +446,7 @@ function App() {
                 <span>IT Support Intern</span>
                 <span className="text-violet-500">•</span>
                 <span>MERN Developer</span>
-                <span className="text-blue-500">•</span>
+                <span className="text-cyan-500">•</span>
                 <span>Cloud Engineer</span>
               </div>
 
@@ -420,7 +463,7 @@ function App() {
               <div className="mt-9 flex flex-wrap gap-4">
                 <a
                   href="#projects"
-                  className="glow-button group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-violet-600 px-7 py-3.5 font-semibold text-white transition hover:scale-[1.03]"
+                  className="glow-button group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 via-violet-600 to-cyan-500 px-7 py-3.5 font-semibold text-white transition hover:scale-[1.03]"
                 >
                   View My Work
                   <ArrowRight
@@ -463,7 +506,7 @@ function App() {
                 <a
                   href={`mailto:${profile.email}`}
                   aria-label="Email"
-                  className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-gray-400 transition hover:border-violet-400/30 hover:bg-violet-500/10 hover:text-white"
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-gray-400 transition hover:border-cyan-400/30 hover:bg-cyan-500/10 hover:text-white"
                 >
                   <Mail size={19} />
                 </a>
@@ -472,9 +515,30 @@ function App() {
 
             {/* HERO VISUAL */}
             <div className="relative mx-auto block w-full max-w-md sm:max-w-lg">
-              <div className="absolute -inset-6 rounded-full bg-gradient-to-r from-blue-600/20 to-violet-600/20 blur-3xl sm:-inset-10" />
+              <div className="absolute -inset-6 rounded-full bg-gradient-to-r from-blue-600/20 via-violet-600/15 to-cyan-500/20 blur-3xl sm:-inset-10" />
+
+              {/* Decorative drifting sparks — visible at every breakpoint */}
+              {heroSparks.map((s, i) => (
+                <span
+                  key={i}
+                  className="spark"
+                  style={{
+                    top: s.top,
+                    left: s.left,
+                    width: s.size,
+                    height: s.size,
+                    animationDuration: `${s.duration}s`,
+                    animationDelay: `${s.delay}s`,
+                  }}
+                />
+              ))}
 
               <div className="floating relative">
+                {/* Pulsing rings — a live focal point on every breakpoint,
+                    including mobile where the orbit rings shrink down */}
+                <div className="pulse-ring" />
+                <div className="pulse-ring pulse-ring-delay" />
+
                 <div className="glass overflow-hidden rounded-3xl shadow-2xl shadow-violet-900/20">
                   <div className="flex items-center gap-2 border-b border-white/[0.07] px-4 py-3 sm:px-6 sm:py-4">
                     <span className="h-2.5 w-2.5 rounded-full bg-red-400/80 sm:h-3 sm:w-3" />
@@ -521,7 +585,7 @@ function App() {
                       <span className="text-gray-300">skills --cloud</span>
                     </div>
 
-                    <div className="pl-2 text-blue-300">
+                    <div className="pl-2 text-cyan-300">
                       Azure • Cloud • Networking • Support
                     </div>
 
@@ -582,8 +646,14 @@ function App() {
                     </div>
                   </div>
                 </div>
-                {/* Orbiting icons — desktop/tablet only, hidden on mobile to avoid overflow */}
-                <div className="orbit-ring orbit-ring-a hidden sm:block">
+
+                {/*
+                  Orbiting icons — previously "hidden sm:block", which removed
+                  them entirely on mobile. Now they render at every breakpoint;
+                  index.css shrinks their radius (.orbit-pos-*) and size
+                  (.orbit-icon) under 640px so they stay inside the viewport.
+                */}
+                <div className="orbit-ring orbit-ring-a block">
                   <div className="orbit-pos-a">
                     <div className="orbit-icon orbit-icon-a">
                       <Wrench size={16} className="text-blue-300" />
@@ -591,7 +661,7 @@ function App() {
                   </div>
                 </div>
 
-                <div className="orbit-ring orbit-ring-b hidden sm:block">
+                <div className="orbit-ring orbit-ring-b block">
                   <div className="orbit-pos-b">
                     <div className="orbit-icon orbit-icon-b">
                       <Network size={16} className="text-violet-300" />
@@ -599,28 +669,39 @@ function App() {
                   </div>
                 </div>
 
-                <div className="orbit-ring orbit-ring-c hidden sm:block">
+                <div className="orbit-ring orbit-ring-c block">
                   <div className="orbit-pos-c">
                     <div className="orbit-icon orbit-icon-c">
-                      <ShieldCheck size={16} className="text-emerald-300" />
+                      <ShieldCheck size={16} className="text-cyan-300" />
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Mobile-only compact chips — replaces floating badges below sm breakpoint */}
+              {/* Mobile-only compact chips — replaces floating badges below sm
+                  breakpoint. Each now has a staggered glow pulse so the hero
+                  still feels alive on mobile, not just statically rendered. */}
               <div className="mt-8 flex flex-wrap justify-center gap-2 sm:hidden">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-500/[0.07] px-3 py-1.5 text-xs font-medium text-emerald-200">
+                <span
+                  className="mobile-chip-pulse inline-flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-500/[0.07] px-3 py-1.5 text-xs font-medium text-emerald-200"
+                  style={{ animationDelay: "0s" }}
+                >
                   <Headphones size={13} />
                   IT Support Intern
                 </span>
 
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-400/20 bg-blue-500/[0.07] px-3 py-1.5 text-xs font-medium text-blue-200">
+                <span
+                  className="mobile-chip-pulse inline-flex items-center gap-1.5 rounded-full border border-blue-400/20 bg-blue-500/[0.07] px-3 py-1.5 text-xs font-medium text-blue-200"
+                  style={{ animationDelay: "0.7s" }}
+                >
                   <Cloud size={13} />
                   Target: Cloud Engineer
                 </span>
 
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-400/20 bg-violet-500/[0.07] px-3 py-1.5 text-xs font-medium text-violet-200">
+                <span
+                  className="mobile-chip-pulse inline-flex items-center gap-1.5 rounded-full border border-violet-400/20 bg-violet-500/[0.07] px-3 py-1.5 text-xs font-medium text-violet-200"
+                  style={{ animationDelay: "1.4s" }}
+                >
                   <Code2 size={13} />
                   MERN Stack
                 </span>
@@ -663,9 +744,9 @@ function App() {
               />
             </Reveal>
 
-            <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3">
-              <Reveal delay={0}>
-                <div className="glass card-hover rounded-3xl p-7">
+            <div className="grid items-stretch gap-5 sm:grid-cols-2 md:grid-cols-3">
+              <Reveal delay={0} className="h-full">
+                <div className="glass card-hover h-full rounded-3xl p-7">
                   <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-400">
                     <Headphones />
                   </div>
@@ -679,8 +760,8 @@ function App() {
                 </div>
               </Reveal>
 
-              <Reveal delay={100}>
-                <div className="glass card-hover rounded-3xl p-7">
+              <Reveal delay={100} className="h-full">
+                <div className="glass card-hover h-full rounded-3xl p-7">
                   <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500/10 text-violet-400">
                     <Code2 />
                   </div>
@@ -694,9 +775,12 @@ function App() {
                 </div>
               </Reveal>
 
-              <Reveal delay={200} className="sm:col-span-2 md:col-span-1">
-                <div className="glass card-hover rounded-3xl p-7">
-                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-400">
+              <Reveal
+                delay={200}
+                className="h-full sm:col-span-2 md:col-span-1"
+              >
+                <div className="glass card-hover h-full rounded-3xl p-7">
+                  <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-400">
                     <Cloud />
                   </div>
 
@@ -723,10 +807,11 @@ function App() {
             <Reveal delay={100}>
               <div className="glass card-hover relative overflow-hidden rounded-3xl p-7 sm:p-10">
                 <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-blue-600/10 blur-3xl" />
+                <div className="absolute bottom-0 left-0 h-40 w-40 rounded-full bg-cyan-500/10 blur-3xl" />
 
                 <div className="relative grid gap-9 lg:grid-cols-[1fr_1.4fr]">
                   <div>
-                    <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 shadow-lg shadow-violet-900/25">
+                    <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 via-violet-600 to-cyan-500 shadow-lg shadow-violet-900/25">
                       <BriefcaseBusiness size={25} />
                     </div>
 
@@ -852,7 +937,7 @@ function App() {
                 <Reveal delay={200}>
                   <div className="glass card-hover rounded-3xl p-7 sm:p-8">
                     <div className="mb-6 flex items-center gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400">
                         <Cloud size={23} />
                       </div>
 
@@ -868,7 +953,7 @@ function App() {
                       {cloudSkills.map((skill) => (
                         <span
                           key={skill}
-                          className="rounded-full border border-blue-400/15 bg-blue-500/[0.07] px-4 py-2 text-sm text-blue-200"
+                          className="rounded-full border border-cyan-400/15 bg-cyan-500/[0.07] px-4 py-2 text-sm text-cyan-200"
                         >
                           {skill}
                         </span>
@@ -912,7 +997,7 @@ function App() {
                     </div>
 
                     <div className="p-5">
-                      <div className="mb-4 flex h-32 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600/20 via-indigo-600/20 to-violet-600/20">
+                      <div className="mb-4 flex h-32 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600/20 via-indigo-600/20 to-cyan-500/20">
                         <div className="text-center">
                           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-blue-400/20 bg-blue-500/10">
                             <Cloud className="text-blue-300" />
@@ -982,7 +1067,7 @@ function App() {
 
                     <a
                       href="#"
-                      className="inline-flex items-center gap-2 font-semibold text-white transition hover:text-blue-300"
+                      className="inline-flex items-center gap-2 font-semibold text-white transition hover:text-cyan-300"
                     >
                       <ExternalLink size={18} />
                       Live Project
@@ -1077,7 +1162,7 @@ function App() {
             <Reveal>
               <div className="relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-gradient-to-br from-blue-600/[0.12] via-[#090910] to-violet-600/[0.15] px-6 py-14 text-center sm:px-12 sm:py-20">
               <div className="absolute -left-20 top-0 h-64 w-64 rounded-full bg-blue-600/20 blur-3xl" />
-              <div className="absolute -right-20 bottom-0 h-64 w-64 rounded-full bg-violet-600/20 blur-3xl" />
+              <div className="absolute -right-20 bottom-0 h-64 w-64 rounded-full bg-cyan-600/20 blur-3xl" />
 
               <div className="relative mx-auto max-w-3xl">
                 <span className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-400">
@@ -1098,7 +1183,7 @@ function App() {
                 <div className="mt-9 flex flex-wrap justify-center gap-4">
                   <a
                     href={`mailto:${profile.email}`}
-                    className="glow-button inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 to-violet-600 px-7 py-3.5 font-semibold"
+                    className="glow-button inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-blue-600 via-violet-600 to-cyan-500 px-7 py-3.5 font-semibold"
                   >
                     <Mail size={18} />
                     Contact Me
@@ -1130,7 +1215,7 @@ function App() {
             Built with React
             <span className="mx-2 text-violet-500">•</span>
             Tailwind CSS
-            <span className="mx-2 text-blue-500">•</span>
+            <span className="mx-2 text-cyan-500">•</span>
             Vite
           </p>
         </div>
